@@ -1,0 +1,8 @@
+{
+  "format": "hksc-evaluation-policy/1",
+  "label": "Fictional demonstration only; not a live allocation or actual broker cost model",
+  "initial_capital_hkd": 1000000,
+  "allocation_fraction": 0.25,
+  "commission_bps": 10,
+  "slippage_bps": 5
+}

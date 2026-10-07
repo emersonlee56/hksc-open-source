@@ -62,12 +62,16 @@ def confined(root, name):
 def validate_bundle(directory):
     root = Path(directory).resolve()
     manifest = read_json(root / 'bundle.json')
+    if not isinstance(manifest, dict):
+        raise ValueError('Bundle manifest must be an object')
     if manifest.get('format') != 'hksc-public-bundle/1':
         raise ValueError('Unsupported bundle format')
     if type(manifest.get('synthetic')) is not bool:
         raise ValueError('Bundle requires explicit synthetic flag')
     day = iso_day(manifest['as_of_date'])
     files = manifest['files']
+    if not isinstance(files, dict):
+        raise ValueError('Bundle files must be an object')
     if not set(REQUIRED) <= set(files):
         raise ValueError('Bundle missing required files')
     for name, digest in files.items():
@@ -130,8 +134,16 @@ def validate_bundle(directory):
                     raise ValueError('Negative turnover or volume')
                 if not values['low'] <= min(values['open'], values['close']) <= max(values['open'], values['close']) <= values['high']:
                     raise ValueError('Invalid OHLC ordering')
-    if 'gildata_facts.json' in files:
+    return root, manifest, sources
+
+
+def background_facts(root, manifest):
+    """Optional content failures are downgraded; its file hash remains mandatory."""
+    day = manifest['as_of_date']
+    if 'gildata_facts.json' in manifest['files']:
         facts = read_json(root / 'gildata_facts.json')
+        if not isinstance(facts, list):
+            raise ValueError('Financial facts must be an array')
         for fact in facts:
             if fact['provider'] != ('synthetic' if manifest['synthetic'] else 'gildata'):
                 raise ValueError('Financial fact provider mismatch')
@@ -141,4 +153,5 @@ def validate_bundle(directory):
                 raise ValueError('Financial fact published after snapshot date')
             if not fact.get('evidence_reference'):
                 raise ValueError('Financial fact requires an evidence reference')
-    return root, manifest, sources
+        return facts
+    return []

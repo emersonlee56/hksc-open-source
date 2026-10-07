@@ -3,17 +3,35 @@ from pathlib import Path
 import hashlib
 import html
 import json
+import csv
 
 from hksc_engine.core_universe import load_core_universe
 from hksc_engine.hkm1_scanner import build_scan, load_daily_series
 from hksc_engine.hkm1_lifecycle import replay_candidate_lifecycle
-from .bundle import read_json, sha, validate_bundle, write_json
+from .bundle import background_facts, confined, read_json, sha, validate_bundle, write_json
+from .contracts import RUN_ARTIFACTS, validate_state
+from .plan import build_plan, document_html, render_plan
 
 
 def history_digest(series, through_date):
     rows = [[d] + [series[k][i] for k in ('open', 'high', 'low', 'close', 'amount')]
             for i, d in enumerate(series['dates']) if d <= through_date]
     return hashlib.sha256(json.dumps(rows, separators=(',', ':')).encode()).hexdigest()
+
+
+def complete_history(root, through_date, symbols):
+    def digest_file(path, expected=None):
+        grouped = {s: [] for s in expected} if expected is not None else {}
+        with path.open(encoding='utf-8-sig', newline='') as handle:
+            for row in csv.DictReader(handle):
+                if row['date'] <= through_date:
+                    grouped.setdefault(row['symbol'], []).append([row['date']] +
+                        [float(row[k]) for k in ('open', 'high', 'low', 'close', 'amount', 'volume')])
+        return {s: hashlib.sha256(json.dumps(sorted(rows), separators=(',', ':')).encode()).hexdigest()
+                for s, rows in grouped.items()}
+    return {'format': 'hksc-history-bindings/2', 'through_date': through_date,
+            'stocks': digest_file(root / 'bars.csv', symbols),
+            'benchmark': digest_file(root / 'benchmark.csv')}
 
 
 def candidate_from(scan, row):
@@ -24,17 +42,22 @@ def candidate_from(scan, row):
         'valid_for_trade_date': scan['valid_for_trade_date'], 'frozen_decision': 'TRADE',
         'signal_close': row['signal_close'], 'atr14': row['atr14'],
         'chase_limit': row['chase_limit'], 'is_actual_trade': False,
+        'initial_stop_formula': row['initial_stop_formula'], 'target_formula': row['target_formula'],
+        'signal_score': row['score'], 'signal_rank': row['qualified_rank'], 'signal_gates': row['gates'],
     }
 
 
-def validate_prior(directory, current_manifest, series, calendar, universe_hash):
+def validate_prior(directory, current_manifest, series, calendar, universe_hash, input_root):
     prior = Path(directory).resolve()
     hashes = read_json(prior / 'result_hashes.json')
-    for name in ('run.json', 'candidates.json', 'lifecycle.json', 'history_bindings.json', 'events.json'):
-        if hashes.get(name) != sha(prior / name):
+    required = RUN_ARTIFACTS
+    if not required <= hashes.keys():
+        raise ValueError('Prior artifact manifest is incomplete')
+    for name, digest in hashes.items():
+        if digest != sha(confined(prior, name)):
             raise ValueError('Prior artifact hash mismatch: ' + name)
     run = read_json(prior / 'run.json')
-    if run['format'] != 'hksc-public-run/1' or run['as_of_date'] >= current_manifest['as_of_date']:
+    if run['format'] != 'hksc-public-run/2' or run['as_of_date'] >= current_manifest['as_of_date']:
         raise ValueError('Prior run date or format mismatch')
     if run['synthetic'] is not current_manifest['synthetic'] or run['is_actual_trade'] is not False:
         raise ValueError('Prior run research mode mismatch')
@@ -43,13 +66,15 @@ def validate_prior(directory, current_manifest, series, calendar, universe_hash)
     if calendar[:len(run['completed_calendar'])] != run['completed_calendar']:
         raise ValueError('Completed calendar changed')
     bindings = read_json(prior / 'history_bindings.json')
-    for symbol, digest in bindings.items():
-        if symbol not in series or history_digest(series[symbol], run['as_of_date']) != digest:
-            raise ValueError('Historical prices changed; separate price-basis review required')
+    current_history = complete_history(input_root, run['as_of_date'], read_json(input_root / 'universe.json')['symbols'])
+    if bindings != current_history:
+        raise ValueError('Historical prices changed (OHLC, amount, volume or benchmark); separate history review required')
     candidates = read_json(prior / 'candidates.json')
     if len({c['candidate_id'] for c in candidates}) != len(candidates):
         raise ValueError('Duplicate prior candidate')
-    return candidates, read_json(prior / 'events.json')
+    states, events = read_json(prior / 'lifecycle.json'), read_json(prior / 'events.json')
+    validate_state(run, candidates, states, events, read_json(prior / 'scan.json'))
+    return candidates, events, states, run
 
 
 def render_report(run, scan, states, sources):
@@ -121,9 +146,11 @@ def run_research(directory, output, prior=None):
     series = load_daily_series(root / 'bars.csv')
     calendar = read_json(root / 'calendar.json')['trading_dates']
     completed = [d for d in calendar if d <= manifest['as_of_date']]
-    previous, old_events = (validate_prior(prior, manifest, series, completed,
-                                         read_json(root / 'universe.json')['symbols_sha256'])
-                            if prior else ([], []))
+    previous, old_events, previous_states, previous_run = (validate_prior(prior, manifest, series, completed,
+                                         read_json(root / 'universe.json')['symbols_sha256'], root)
+                            if prior else ([], [], [], None))
+    if any(c['symbol'] not in series for c in previous):
+        raise ValueError('Previously tracked candidate has no market history')
     scan, coverage = build_scan(universe_path=root / 'universe.json',
                                bars_path=root / 'bars.csv', benchmark_path=root / 'benchmark.csv',
                                calendar_path=root / 'calendar.json', source_manifest_path=root / 'sources.json',
@@ -152,23 +179,40 @@ def run_research(directory, output, prior=None):
             if event['event_id'] in events and events[event['event_id']] != event:
                 raise ValueError('Existing event changed')
             events[event['event_id']] = event
-    bindings = {s: history_digest(series[s], manifest['as_of_date']) for s in core.symbols if s in series}
-    run = {'format': 'hksc-public-run/1', 'as_of_date': manifest['as_of_date'],
+    bindings = complete_history(root, manifest['as_of_date'], core.symbols)
+    run = {'format': 'hksc-public-run/2', 'as_of_date': manifest['as_of_date'],
            'synthetic': manifest['synthetic'], 'is_actual_trade': False,
            'qualification_state': 'RESEARCH_ONLY', 'review_required': True,
            'universe_symbols_sha256': read_json(root / 'universe.json')['symbols_sha256'],
            'completed_calendar': completed, 'bundle_sha256': sha(root / 'bundle.json'),
+           'bound_calendar': calendar, 'universe_version': core.version,
+           'prior_as_of_date': previous_run['as_of_date'] if previous_run else None,
            'prior_result_hashes_sha256': sha(Path(prior) / 'result_hashes.json') if prior else None,
            'open_candidate_count': sum(s['lifecycle_status'] not in terminal for s in states),
            'new_candidate_count': len(new_candidates), 'source_records': sources}
+    degradations = []
+    try:
+        facts = background_facts(root, manifest)
+    except (ValueError, KeyError, TypeError, OSError) as exc:
+        facts = []
+        degradations.append({'module': 'background', 'status': 'DEGRADED', 'reason': str(exc)})
+    run['degradations'] = degradations
+    plan = build_plan(run, scan, candidates, states, previous_states, facts)
+    run['observation_mode'] = plan['observation_mode']
+    run['strategy_version'] = scan['strategy_version']
+    validate_state(run, candidates, states, sorted(events.values(), key=lambda e: (e['observed_trade_date'], e['event_id'])), scan)
+    _, confirmed_manifest, confirmed_sources = validate_bundle(root)
+    if confirmed_manifest != manifest or confirmed_sources != sources:
+        raise ValueError('Input changed during research calculation')
     target.mkdir(parents=True, exist_ok=False)
     artifacts = {'run.json': run, 'scan.json': scan, 'coverage.json': coverage,
                  'candidates.json': candidates, 'lifecycle.json': states,
                  'events.json': sorted(events.values(), key=lambda e: (e['observed_trade_date'], e['event_id'])),
-                 'history_bindings.json': bindings}
+                 'history_bindings.json': bindings, 'daily_plan.json': plan}
     for name, value in artifacts.items():
         write_json(target / name, value)
-    (target / 'report.md').write_text(render_report(run, scan, states, sources), encoding='utf-8')
-    (target / 'report.html').write_text(report_html(run, scan, states, sources), encoding='utf-8')
+    report = render_plan(plan)
+    (target / 'report.md').write_text(report, encoding='utf-8')
+    (target / 'report.html').write_text(document_html('HKSC 每日行动计划', report), encoding='utf-8')
     write_json(target / 'result_hashes.json', {p.name: sha(p) for p in sorted(target.iterdir())})
     return run

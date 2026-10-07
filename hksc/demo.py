@@ -7,20 +7,24 @@ from hksc_engine.core_universe import symbols_sha256
 from .bundle import sha, write_json
 
 
-def generate(directory):
+def generate(directory, ends=None):
+    ends = tuple(ends) if ends is not None else (129, 133)
+    if not ends or tuple(sorted(set(ends))) != ends or min(ends) < 120:
+        raise ValueError('Synthetic endpoints must be ordered unique indices with enough history')
     root = Path(directory)
     root.mkdir(parents=True, exist_ok=False)
     dates = []
     day = date(2025, 1, 2)
-    while len(dates) < 135:
+    while len(dates) < max(135, max(ends) + 2):
         if day.weekday() < 5:
             dates.append(day.isoformat())
         day += timedelta(days=1)
     symbols = tuple(f'DEMO.{i:05d}' for i in range(1, 141))
     fields = ('symbol', 'date', 'open', 'high', 'low', 'close', 'amount', 'volume')
     roots = []
-    for end in (129, 133):
-        bundle = root / ('signal' if end == 129 else 'followup')
+    for end in ends:
+        name = ('signal' if end == 129 else 'followup') if ends == (129, 133) else dates[end]
+        bundle = root / name
         bundle.mkdir()
         roots.append(bundle)
         with (bundle / 'universe.csv').open('x', encoding='utf-8', newline='') as handle:
@@ -85,6 +89,13 @@ def generate(directory):
             'bars': record, 'benchmark': record,
             'stock_provenance_assessment': {'adjustment': 'qfq', 'synthetic': True},
         })
+        write_json(bundle / 'gildata_facts.json', [{
+            'provider': 'synthetic', 'symbol': 'DEMO.00005', 'category': 'fictional_company_context',
+            'statement': '合成背景示例：此记录不对应真实公告或公司，且不参与 HK-M1 扫描。',
+            'published_at': dates[end] + 'T15:30:00+08:00',
+            'retrieved_at': dates[end] + 'T16:11:00+08:00',
+            'evidence_reference': 'fictional fact generated independently of all suppliers',
+        }])
         files = {p.name: sha(p) for p in sorted(bundle.iterdir())}
         write_json(bundle / 'bundle.json', {
             'format': 'hksc-public-bundle/1', 'as_of_date': dates[end],

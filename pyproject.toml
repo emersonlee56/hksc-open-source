@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hksc-open-source"
-version = "0.1.0"
+version = "0.2.0"
 description = "Reproducible Hong Kong equity research with explicit data provenance"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
-authors = [{name = "HKSC contributors"}]
+authors = [{name = "Emerson"}]
 dependencies = []
 
 [project.scripts]

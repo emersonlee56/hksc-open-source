@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="350" viewBox="0 0 1200 350" role="img" aria-labelledby="title desc">
+  <title id="title">HKSC: Hong Kong Equity Research</title>
+  <desc id="desc">AI-assisted research with source evidence, deterministic rules and candidate tracking.</desc>
+  <defs>
+    <linearGradient id="background" x2="1" y2="1"><stop stop-color="#132f2a"/><stop offset="1" stop-color="#245047"/></linearGradient>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse"><path d="M44 0H0V44" fill="none" stroke="#95b2a3" stroke-width="0.5" opacity="0.13"/></pattern>
+  </defs>
+  <rect width="1200" height="350" rx="12" fill="url(#background)"/>
+  <rect width="1200" height="350" rx="12" fill="url(#grid)"/>
+  <path d="M670 260L715 268L764 227L810 240L856 179L903 195L953 126L1008 148L1094 80" fill="none" stroke="#7eab91" stroke-width="2" opacity="0.55"/>
+  <path d="M670 283L716 290L765 264L811 263L859 232L904 240L954 202L1008 207L1094 166" fill="none" stroke="#a7b9a4" stroke-width="1.5" opacity="0.28"/>
+  <circle cx="953" cy="126" r="5" fill="#cf7a48"/><circle cx="1094" cy="80" r="5" fill="#cf7a48"/>
+  <rect x="57" y="50" width="48" height="4" fill="#cf7a48"/>
+  <text x="57" y="91" fill="#cf9b76" font-family="Georgia,serif" font-size="13" letter-spacing="5">HONG KONG EQUITY RESEARCH</text>
+  <text x="52" y="212" fill="#f5f0e3" font-family="Georgia,serif" font-size="113" letter-spacing="3">HKSC</text>
+  <text x="59" y="257" fill="#d8e0d4" font-family="Georgia,serif" font-size="22">Source evidence. Defined rules. Continuous tracking.</text>
+  <line x1="59" y1="285" x2="1140" y2="285" stroke="#a5b7a7" opacity="0.25"/>
+  <text x="59" y="317" fill="#a8bfb0" font-family="sans-serif" font-size="12" letter-spacing="2">AGENT + MCP + PYTHON</text>
+  <text x="1140" y="317" fill="#d39b74" font-family="sans-serif" font-size="12" letter-spacing="2" text-anchor="end">OPEN RESEARCH / HK-M1</text>
+</svg>
