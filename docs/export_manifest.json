@@ -1,0 +1,37 @@
+{
+  "excluded": [
+    "original_git_history",
+    "credentials",
+    "personal_paths",
+    "provider_data",
+    "universe_membership",
+    "run_ledgers",
+    "task_instances",
+    "automation_state",
+    "account_data"
+  ],
+  "format": "hksc-public-export/1",
+  "inherited_modules": {
+    "hksc_engine/core_universe.py": {
+      "origin_sha256": "22e7a61db6a1ca3f1acd95eac81c688830efc181ac6e4828c7510257f587e197",
+      "public_sha256": "fa09d3e3638b3d0da87bf7ac9853f1153191e63b8b5cbc7a4a714510721c89a6"
+    },
+    "hksc_engine/hkm1_lifecycle.py": {
+      "origin_sha256": "35c1d24579d54a84b5d08f7fff37bf1eecab004aa3896ca687aea1272f4d2d1e",
+      "public_sha256": "b14d5b9ef6ce072a8fa108c0dada55a76ca3b976e30877a9062a913cf059c28b"
+    },
+    "hksc_engine/hkm1_scanner.py": {
+      "origin_sha256": "411005f3c2c438e3c5238d34ee7d38a4855c0c6bad3467e0e39bad6da8be3791",
+      "public_sha256": "878c963c0c041a1b752a1a39711b39642c1b3c5a9c53ee55610ee77e200c44df"
+    },
+    "hksc_engine/hkm1_snapshot_quality.py": {
+      "origin_sha256": "1000aa9c89ef20a9e805ffe12a010e6ad51dda1ceb2fe197ba809a415e244573",
+      "public_sha256": "c2ebb90654e44a4b2ea517bc19c7eba40606c69b18eab795242b67df3b813438"
+    }
+  },
+  "public_changes": [
+    "portable manifest-relative input paths",
+    "manifest-bound user universe instead of private pool pin",
+    "public research qualification and generic review label"
+  ]
+}

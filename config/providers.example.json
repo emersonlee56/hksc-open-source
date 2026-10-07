@@ -1,0 +1,26 @@
+{
+  "gildata": {
+    "display_name": "恒生聚源数据地图 MCP",
+    "access_mode": "external_mcp",
+    "role": "announcement_financial_research_evidence",
+    "endpoint": null,
+    "tool_names": [],
+    "status": "EXTERNAL_SETUP_REQUIRED"
+  },
+  "westock": {
+    "display_name": "腾讯自选股 WeStock MCP",
+    "access_mode": "external_mcp",
+    "role": "historical_daily_bars_and_quote_cross_check",
+    "endpoint": null,
+    "tool_names": [],
+    "status": "EXTERNAL_SETUP_REQUIRED"
+  },
+  "futu": {
+    "display_name": "Futu Skills / OpenD",
+    "access_mode": "external_read_only_skills",
+    "role": "quote_open_evidence_and_market_microstructure",
+    "host": "127.0.0.1",
+    "port": 11111,
+    "status": "EXTERNAL_SETUP_REQUIRED"
+  }
+}

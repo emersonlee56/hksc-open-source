@@ -1,0 +1,11 @@
+This project extracts selected research modules from HKSC into an independent
+public distribution. Its Git history starts with this public export.
+
+The MIT license covers this repository's code and documentation. It does not
+grant rights to third-party market data, MCP services, SDKs, skills or brands.
+Hengsheng Juyuan/GilData, Tencent WeStock and Futu are external providers.
+Their names identify sources used by the underlying research workflow and do
+not imply sponsorship, certification or endorsement.
+
+Demo data is procedurally generated. Demo symbols, calendars, financial facts,
+returns and simulated outcomes are fictional, not a published research record.
